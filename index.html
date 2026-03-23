@@ -93,6 +93,7 @@
             <!-- HUD -->
             <div class="bg-gray-800 p-3 flex justify-between items-center border-b-4 border-gray-700 text-[10px] md:text-xs">
                 <div id="hud-money" class="text-green-400">CASH: $0</div>
+                <div id="hud-subs" class="text-purple-400">SUBS: 1.50M</div>
                 <div id="hud-distance" class="text-yellow-400">DIST: 1200 MILES</div>
             </div>
 
@@ -144,6 +145,26 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Landmark Modal Overlay -->
+            <div id="landmark-modal" class="absolute inset-0 bg-black/80 z-30 flex items-center justify-center p-4 hidden">
+                <div class="bg-purple-900 border-4 border-white p-6 max-w-sm w-full pixel-borders text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="text-4xl mb-4">📸</div>
+                    <h3 id="landmark-name" class="text-xs text-yellow-400 mb-4 uppercase leading-loose">Landmark</h3>
+                    <p class="text-[10px] text-white mb-6 leading-loose">Perfect spot for the YouTube thumbnail! Do a burnout to go viral?</p>
+                    
+                    <div id="landmark-reward" class="text-[10px] mb-6 font-bold text-green-400">
+                        POTENTIAL: +50K VIEWS
+                    </div>
+
+                    <button onclick="takeThumbnailPhoto()" class="retro-btn bg-yellow-600 hover:bg-yellow-500 text-white p-3 border-4 border-gray-900 pixel-borders text-[10px] w-full mb-3">
+                        DO A BURNOUT (RISK DAMAGE)
+                    </button>
+                    <button onclick="skipLandmark()" class="retro-btn bg-gray-600 hover:bg-gray-500 text-white p-3 border-4 border-gray-900 pixel-borders text-[10px] w-full">
+                        PLAY IT SAFE & DRIVE ON
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- === GAME OVER SCREEN === -->
@@ -170,6 +191,7 @@
                 <div class="mb-2 text-yellow-400">TRIP REPORT:</div>
                 <div id="win-cash">REMAINING CASH: $0</div>
                 <div id="win-vehicles-report"></div>
+                <div id="win-youtube-report" class="mt-4 text-purple-400 border-t-2 border-green-500 pt-2"></div>
             </div>
 
             <button onclick="startGame()" class="retro-btn bg-blue-600 hover:bg-blue-500 text-white p-4 border-4 border-gray-900 pixel-borders text-xs">
@@ -289,6 +311,18 @@
             { text: "Heavy rainstorm washed all the mud out of the radiator.", hpDamage: -15, type: 'good' },
         ];
 
+        const LANDMARKS = [
+            { name: "World's Tallest Thermometer", baseViews: 25000 },
+            { name: "Abandoned Mojave Gas Station", baseViews: 35000 },
+            { name: "Area 51 Backgate", baseViews: 80000 },
+            { name: "Bonneville Salt Flats", baseViews: 120000 },
+            { name: "Random Giant Dinosaur Statue", baseViews: 40000 },
+            { name: "Salt Lake City Temple", baseViews: 30000 },
+            { name: "Craters of the Moon", baseViews: 60000 },
+            { name: "Shoshone Falls", baseViews: 45000 },
+            { name: "Welcome to Idaho Sign", baseViews: 100000 }
+        ];
+
         // --- Game State ---
         let state = {
             gameState: 'START', // START, MARKET, TRAVEL, GAMEOVER, WIN
@@ -297,6 +331,9 @@
             vehicles: [],
             marketListings: [],
             currentEvent: null,
+            currentLandmark: null,
+            subscribers: 1500000, // Start with 1.5M subs
+            videoViews: 0,
             log: [],
             bgOffset: 0
         };
@@ -331,6 +368,9 @@
             state.vehicles = [];
             state.log = [];
             state.bgOffset = 0;
+            state.videoViews = 0;
+            state.currentEvent = null;
+            state.currentLandmark = null;
             generateMarketplace();
             render();
         }
@@ -410,6 +450,11 @@
             if (activeEvent && activeEvent.hpDamage !== 0) {
                 state.currentEvent = activeEvent;
                 addToLog(`${activeEvent.vehicleName}: ${activeEvent.text}`);
+            } else if (Math.random() < 0.2) { 
+                // 20% chance to find a landmark if no breakdown
+                const lm = LANDMARKS[Math.floor(Math.random() * LANDMARKS.length)];
+                state.currentLandmark = lm;
+                addToLog(`Spotted: ${lm.name}!`);
             } else {
                 addToLog(`Drove ${milesDriven} miles smoothly.`);
             }
@@ -424,8 +469,43 @@
             render();
         }
 
+        function takeThumbnailPhoto() {
+            if (!state.currentLandmark) return;
+            
+            const viewsGained = state.currentLandmark.baseViews + Math.floor(Math.random() * 20000);
+            const subsGained = Math.floor(viewsGained * 0.05); // 5% conversion to subs
+            
+            state.videoViews += viewsGained;
+            state.subscribers += subsGained;
+            addToLog(`📸 EPIC BURNOUT! +${viewsGained.toLocaleString()} Views, +${subsGained.toLocaleString()} Subs.`);
+            
+            // Risk of damage from the burnout
+            if (Math.random() < 0.4) {
+                const aliveCars = state.vehicles.filter(v => v.hp > 0);
+                if (aliveCars.length > 0) {
+                    const car = aliveCars[Math.floor(Math.random() * aliveCars.length)];
+                    const dmg = 15 + Math.floor(Math.random() * 25);
+                    const originalHp = car.hp;
+                    car.hp = Math.max(0, car.hp - dmg);
+                    addToLog(`⚠️ Sent it too hard! ${car.name} took ${originalHp - car.hp} damage.`);
+                }
+            }
+
+            state.currentLandmark = null;
+            checkWinLoss();
+            render();
+        }
+
+        function skipLandmark() {
+            if (!state.currentLandmark) return;
+            addToLog(`Skipped photoshoot at ${state.currentLandmark.name}.`);
+            state.currentLandmark = null;
+            checkWinLoss();
+            render();
+        }
+
         function checkWinLoss() {
-            if (state.gameState !== 'TRAVEL' || state.currentEvent) return;
+            if (state.gameState !== 'TRAVEL' || state.currentEvent || state.currentLandmark) return;
             
             const aliveCars = state.vehicles.filter(v => v.hp > 0).length;
             
@@ -479,6 +559,7 @@
         function renderTravel() {
             // HUD
             document.getElementById('hud-money').innerText = `CASH: $${state.money}`;
+            document.getElementById('hud-subs').innerText = `SUBS: ${(state.subscribers / 1000000).toFixed(2)}M`;
             document.getElementById('hud-distance').innerText = `DIST: ${state.distance} MILES`;
 
             // Backgrounds
@@ -547,6 +628,16 @@
             } else {
                 modal.classList.add('hidden');
             }
+
+            // Landmark Modal
+            const landmarkModal = document.getElementById('landmark-modal');
+            if (state.currentLandmark && !state.currentEvent) {
+                landmarkModal.classList.remove('hidden');
+                document.getElementById('landmark-name').innerText = state.currentLandmark.name;
+                document.getElementById('landmark-reward').innerText = `POTENTIAL: +${state.currentLandmark.baseViews.toLocaleString()} VIEWS`;
+            } else {
+                landmarkModal.classList.add('hidden');
+            }
         }
 
         function render() {
@@ -563,6 +654,24 @@
                 document.getElementById('win-vehicles-report').innerHTML = state.vehicles.map(v => `
                     <div class="mt-2">${v.name}: ${v.hp > 0 ? `${v.hp} HP (Survived)` : 'Towed Home (Broken)'}</div>
                 `).join('');
+                
+                // YouTube Stats
+                const v1 = state.vehicles[0]?.name || "Junk";
+                const v2 = state.vehicles[1]?.name || "Trash";
+                const videoTitle = `We bought a ${v1} & ${v2} and DROVE 1200 MILES HOME!`;
+                
+                // Add completion views
+                const finalViews = state.videoViews + 250000; 
+                const newSubs = Math.floor(finalViews * 0.05);
+                state.subscribers += newSubs;
+
+                document.getElementById('win-youtube-report').innerHTML = `
+                    <div class="text-[10px] mb-2 font-bold uppercase text-white">YOUTUBE VIDEO STATS:</div>
+                    <div class="mb-2 italic">"${videoTitle}"</div>
+                    <div>👀 VIEWS: ${finalViews.toLocaleString()}</div>
+                    <div>👍 NEW SUBS: +${newSubs.toLocaleString()}</div>
+                    <div class="mt-2 text-yellow-400">TOTAL SUBS: ${(state.subscribers / 1000000).toFixed(2)}M</div>
+                `;
             }
         }
 
