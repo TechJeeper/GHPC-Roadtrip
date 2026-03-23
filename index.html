@@ -1,0 +1,530 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+// --- Game Data & Templates ---
+const VEHICLE_TEMPLATES = [
+  { id: 1, name: "Cursed Gov Humvee", baseRel: 0.4, icon: "🪖", baseHp: 100 },
+  { id: 2, name: "Barbie Jeep w/ 450cc", baseRel: 0.5, icon: "🚙", baseHp: 80 },
+  { id: 3, name: "Rusty 6x6 Dump Truck", baseRel: 0.6, icon: "🚜", baseHp: 120 },
+  { id: 4, name: "Abandoned Tacoma", baseRel: 0.8, icon: "🛻", baseHp: 110 },
+  { id: 5, name: "Chang Li EV", baseRel: 0.3, icon: "🚗", baseHp: 60 },
+  { id: 6, name: "Rotary Swapped Trike", baseRel: 0.45, icon: "🛵", baseHp: 70 },
+  { id: 7, name: "Diesel Limo", baseRel: 0.55, icon: "🚕", baseHp: 130 },
+  { id: 8, name: "Sketchy 3-Wheeler", baseRel: 0.2, icon: "🛺", baseHp: 50 },
+  { id: 9, name: "Lifted Crown Vic", baseRel: 0.65, icon: "🚓", baseHp: 110 },
+  { id: 10, name: "Hayabusa Smart Car", baseRel: 0.4, icon: "🚙", baseHp: 60 },
+  { id: 11, name: "School Bus Camper", baseRel: 0.7, icon: "🚌", baseHp: 150 },
+  { id: 12, name: "V8 Swapped Tesla", baseRel: 0.35, icon: "🏎️", baseHp: 90 },
+  { id: 13, name: "Homemade Hovercraft", baseRel: 0.15, icon: "🛸", baseHp: 40 },
+  { id: 14, name: "Clapped Out Miata", baseRel: 0.75, icon: "🏎️", baseHp: 80 },
+  { id: 15, name: "Stretched Grom", baseRel: 0.5, icon: "🏍️", baseHp: 50 },
+  { id: 16, name: "Sketchy Snowcat", baseRel: 0.4, icon: "🚜", baseHp: 140 },
+  { id: 17, name: "Lifted Miata on Boggers", baseRel: 0.45, icon: "🚙", baseHp: 85 },
+  { id: 18, name: "Abandoned Mail Truck", baseRel: 0.6, icon: "🚐", baseHp: 95 },
+  { id: 19, name: "Turbocharged Golf Cart", baseRel: 0.25, icon: "🛺", baseHp: 45 },
+  { id: 20, name: "LS Swapped Minivan", baseRel: 0.5, icon: "🚐", baseHp: 130 },
+  { id: 21, name: "Chopped Roof Station Wagon", baseRel: 0.55, icon: "🚗", baseHp: 100 },
+  { id: 22, name: "Jet Ski on Wheels", baseRel: 0.3, icon: "🚤", baseHp: 55 },
+  { id: 23, name: "Street Legal Zamboni", baseRel: 0.6, icon: "🚜", baseHp: 160 },
+  { id: 24, name: "Former Police Interceptor", baseRel: 0.7, icon: "🚓", baseHp: 120 },
+  { id: 25, name: "Snowmobile Engine Go-Kart", baseRel: 0.35, icon: "🏎️", baseHp: 65 },
+  { id: 26, name: "8-Wheel Amphibious ATV", baseRel: 0.4, icon: "🚜", baseHp: 110 },
+  { id: 27, name: "Retired Ambulance", baseRel: 0.65, icon: "🚑", baseHp: 140 },
+  { id: 28, name: "Half a VW Beetle", baseRel: 0.4, icon: "🚗", baseHp: 70 },
+  { id: 29, name: "Creepy Ice Cream Truck", baseRel: 0.5, icon: "🚐", baseHp: 115 },
+  { id: 30, name: "Top Speed Riding Mower", baseRel: 0.2, icon: "🚜", baseHp: 40 },
+  { id: 31, name: "Drivable Scissor Lift", baseRel: 0.7, icon: "🏗️", baseHp: 180 },
+  { id: 32, name: "Hearse with a Roll Cage", baseRel: 0.6, icon: "🚙", baseHp: 125 },
+];
+
+const CONDITIONS = [
+  { label: "Mint (Grandpa Owned)", relMod: 1.2, hpMod: 1.2, price: 800 },
+  { label: "Good (Runs and Drives)", relMod: 1.0, hpMod: 1.0, price: 500 },
+  { label: "Barn Find (Guano Coated)", relMod: 0.85, hpMod: 0.9, price: 400 },
+  { label: "Built Not Bought (Poorly)", relMod: 0.6, hpMod: 1.1, price: 600 },
+  { label: "Sketchy (Needs TLC)", relMod: 0.7, hpMod: 0.8, price: 300 },
+  { label: "Ran When Parked (1998)", relMod: 0.5, hpMod: 0.6, price: 200 },
+  { label: "Cursed (Bring a Trailer)", relMod: 0.4, hpMod: 0.5, price: 100 },
+  { label: "Mechanic's Special (In Boxes)", relMod: 0.3, hpMod: 0.4, price: 50 },
+  { label: "Just Needs a Battery (Lie)", relMod: 0.45, hpMod: 0.6, price: 150 },
+  { label: "No Title, Bill of Sale Only", relMod: 0.9, hpMod: 0.9, price: 250 },
+  { label: "Flooded in Hurricane", relMod: 0.35, hpMod: 0.5, price: 120 },
+  { label: "Slight Fire Damage", relMod: 0.55, hpMod: 0.7, price: 180 },
+  { label: "Engine is in the Trunk", relMod: 0.2, hpMod: 0.3, price: 80 },
+  { label: "Held Together by Hopes", relMod: 0.4, hpMod: 0.4, price: 100 },
+  { label: "Driven Only on Drag Strip", relMod: 0.5, hpMod: 1.3, price: 700 },
+  { label: "Wife Making Me Sell It", relMod: 0.95, hpMod: 0.95, price: 450 },
+];
+
+const EVENTS = [
+  { text: "Coolant geyser! The radiator blew up.", hpDamage: 25, type: 'bad' },
+  { text: "Sent it too hard off a sweet jump. Suspension bent.", hpDamage: 30, type: 'bad' },
+  { text: "Wiring fire under the dash! Grab the extinguisher!", hpDamage: 40, type: 'bad' },
+  { text: "Stuck in 4-Low. Limping it to the next town.", hpDamage: 15, type: 'bad' },
+  { text: "Alternator died. Running on battery power alone.", hpDamage: 20, type: 'bad' },
+  { text: "Death wobble at 50mph almost sent you into a ditch.", hpDamage: 10, type: 'bad' },
+  { text: "Brakes failed on a mountain pass. Scary stuff.", hpDamage: 35, type: 'bad' },
+  { text: "Exhaust fell off completely. It's loud now.", hpDamage: 10, type: 'bad' },
+  { text: "Lost a wheel! Good thing you found it in the ditch.", hpDamage: 30, type: 'bad' },
+  { text: "Hit a massive pothole. Struts are currently protesting.", hpDamage: 20, type: 'bad' },
+  { text: "Mysterious fluid leak. It's rainbow colored?", hpDamage: 15, type: 'bad' },
+  { text: "Windshield wipers flew off in a rainstorm.", hpDamage: 10, type: 'bad' },
+  { text: "Squirrels nested in the airbox. Engine is choking.", hpDamage: 25, type: 'bad' },
+  { text: "Ran out of gas. Had to siphon from a tractor.", hpDamage: 5, type: 'bad' },
+  { text: "Check engine light came on... then burned out.", hpDamage: 15, type: 'bad' },
+  { text: "Transmission slipping. Going 20mph uphill.", hpDamage: 20, type: 'bad' },
+  { text: "Met up with the Fab Rats! They welded up your frame.", hpDamage: -30, type: 'good' }, // Negative damage = heal
+  { text: "Found a harbor freight. Stocked up on zip ties.", hpDamage: -10, type: 'good' },
+  { text: "Smooth cruising for 50 miles. A rare treat.", hpDamage: 0, type: 'good' },
+  { text: "Found an O'Reilly Auto Parts with the exact weird belt you needed.", hpDamage: -20, type: 'good' },
+  { text: "Local farmer towed you out of the mud for free.", hpDamage: -15, type: 'good' },
+  { text: "A nice follower recognized you and bought you gas.", hpDamage: -10, type: 'good' },
+  { text: "Junkyard had the exact obscure part you needed for $5.", hpDamage: -25, type: 'good' },
+  { text: "Hit a tumbleweed the size of a cow. Bumper gone.", hpDamage: 15, type: 'bad' },
+  { text: "Police pulled you over. Overheated while idling.", hpDamage: 10, type: 'bad' },
+  { text: "Speedometer cable snapped. Guess we're going by sound.", hpDamage: 5, type: 'bad' },
+  { text: "Headliner completely collapsed blocking your view.", hpDamage: 10, type: 'bad' },
+  { text: "Radio randomly blasted full volume and shorted out.", hpDamage: 5, type: 'bad' },
+  { text: "Passenger seat fell through the rusted floorboard.", hpDamage: 20, type: 'bad' },
+  { text: "Steering wheel came off in your hands!", hpDamage: 35, type: 'bad' },
+  { text: "Hit a swarm of locusts. Radiator completely clogged.", hpDamage: 25, type: 'bad' },
+  { text: "Driveshaft dropped on the highway. Sparks everywhere!", hpDamage: 40, type: 'bad' },
+  { text: "Lost all gears except reverse. Driving backward for 5 miles.", hpDamage: 20, type: 'bad' },
+  { text: "Exhaust fumes leaking into cabin. Getting dizzy.", hpDamage: 15, type: 'bad' },
+  { text: "Throttle stuck wide open! Barely avoided a crash.", hpDamage: 30, type: 'bad' },
+  { text: "Tire completely delaminated. Running on a sparky rim.", hpDamage: 25, type: 'bad' },
+  { text: "Hood latch failed, smashed the windshield.", hpDamage: 30, type: 'bad' },
+  { text: "Horn won't stop honking. Everyone hates you.", hpDamage: 5, type: 'bad' },
+  { text: "Doors locked themselves with the keys inside. Broke a window.", hpDamage: 15, type: 'bad' },
+  { text: "Found a perfectly good spare tire on the shoulder.", hpDamage: -20, type: 'good' },
+  { text: "Local car meet! Someone tuned your carb for free.", hpDamage: -15, type: 'good' },
+  { text: "Hit a massive bump and the check engine light turned off!", hpDamage: -10, type: 'good' },
+  { text: "Massive tailwind pushed you up the mountain pass.", hpDamage: -5, type: 'good' },
+  { text: "Stopped at a sketchy diner. Coffee energized you to fix the timing.", hpDamage: -15, type: 'good' },
+  { text: "Found a brand new roll of duct tape in the glovebox.", hpDamage: -10, type: 'good' },
+  { text: "Heavy rainstorm washed all the mud out of the radiator.", hpDamage: -15, type: 'good' },
+];
+
+export default function App() {
+  // --- State ---
+  const [gameState, setGameState] = useState('START'); // START, MARKET, TRAVEL, GAMEOVER, WIN
+  const [money, setMoney] = useState(1500);
+  const [distance, setDistance] = useState(1200); // Miles from SoCal to North Idaho
+  const [vehicles, setVehicles] = useState([]);
+  const [marketListings, setMarketListings] = useState([]);
+  const [currentEvent, setCurrentEvent] = useState(null);
+  const [log, setLog] = useState([]);
+  const [bgOffset, setBgOffset] = useState(0);
+
+  // --- Initialization ---
+  const generateMarketplace = () => {
+    const listings = [];
+    const shuffledTemplates = [...VEHICLE_TEMPLATES].sort(() => 0.5 - Math.random());
+    
+    for (let i = 0; i < 5; i++) {
+      const template = shuffledTemplates[i];
+      const condition = CONDITIONS[Math.floor(Math.random() * CONDITIONS.length)];
+      listings.push({
+        id: Math.random().toString(36).substr(2, 9),
+        name: template.name,
+        icon: template.icon,
+        condition: condition.label,
+        maxHp: Math.floor(template.baseHp * condition.hpMod),
+        hp: Math.floor(template.baseHp * condition.hpMod),
+        reliability: template.baseRel * condition.relMod,
+        price: condition.price + Math.floor(Math.random() * 100),
+        selected: false
+      });
+    }
+    setMarketListings(listings);
+  };
+
+  const startGame = () => {
+    setGameState('MARKET');
+    setMoney(2000);
+    setDistance(1200);
+    setVehicles([]);
+    setLog([]);
+    generateMarketplace();
+  };
+
+  const toggleMarketSelection = (id) => {
+    setMarketListings(prev => prev.map(item => {
+      if (item.id === id) return { ...item, selected: !item.selected };
+      return item;
+    }));
+  };
+
+  const buyVehicles = () => {
+    const selected = marketListings.filter(l => l.selected);
+    if (selected.length !== 2) {
+      alert("You must select exactly 2 vehicles for the road trip!");
+      return;
+    }
+    const totalCost = selected.reduce((sum, v) => sum + v.price, 0);
+    if (totalCost > money) {
+      alert("You don't have enough cash for those! Pick cheaper sketchy cars.");
+      return;
+    }
+    setMoney(money - totalCost);
+    setVehicles(selected);
+    addToLog(`Bought ${selected[0].name} and ${selected[1].name}.`);
+    addToLog("Left SoCal. Destination: Sandpoint, Idaho.");
+    setGameState('TRAVEL');
+  };
+
+  // --- Core Game Loop ---
+  const addToLog = (msg) => {
+    setLog(prev => [msg, ...prev].slice(0, 5));
+  };
+
+  const repairVehicle = (index) => {
+    const cost = 100;
+    const heal = 40;
+    if (money < cost) return;
+    
+    setVehicles(prev => {
+      const newV = [...prev];
+      if (newV[index].hp < newV[index].maxHp && newV[index].hp > 0) {
+         setMoney(m => m - cost);
+         newV[index].hp = Math.min(newV[index].maxHp, newV[index].hp + heal);
+         addToLog(`Spent $${cost} fixing ${newV[index].name} with JB Weld.`);
+      }
+      return newV;
+    });
+  };
+
+  const drive = () => {
+    // 1. Advance distance
+    const milesDriven = Math.floor(Math.random() * 40) + 40; // 40-80 miles
+    let newDist = distance - milesDriven;
+    if (newDist < 0) newDist = 0;
+    setDistance(newDist);
+    setBgOffset(prev => prev + 50);
+
+    // 2. Check for events on active vehicles
+    let activeEvent = null;
+    const newVehicles = [...vehicles];
+
+    newVehicles.forEach((v, i) => {
+      if (v.hp <= 0) return; // Already broken down
+      
+      // Roll for breakdown based on reliability (lower reliability = higher chance to break)
+      const breakChance = 1.0 - v.reliability;
+      const roll = Math.random();
+      
+      if (roll < breakChance * 0.4) { // 40% of the inverted reliability chance per drive
+        const randomEvent = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+        activeEvent = { ...randomEvent, vehicleIndex: i, vehicleName: v.name };
+        
+        v.hp -= randomEvent.hpDamage;
+        if (v.hp > v.maxHp) v.hp = v.maxHp;
+        if (v.hp < 0) v.hp = 0;
+      }
+    });
+
+    setVehicles(newVehicles);
+
+    // 3. Process Events or Progression
+    if (activeEvent && activeEvent.hpDamage !== 0) {
+      setCurrentEvent(activeEvent);
+      addToLog(`${activeEvent.vehicleName}: ${activeEvent.text}`);
+    } else {
+      addToLog(`Drove ${milesDriven} miles smoothly.`);
+    }
+
+    // 4. Check Win/Loss conditions (handled in an effect to ensure state is updated)
+  };
+
+  const handleEventAcknowledge = () => {
+    setCurrentEvent(null);
+  };
+
+  useEffect(() => {
+    if (gameState !== 'TRAVEL') return;
+    
+    const aliveCars = vehicles.filter(v => v.hp > 0).length;
+    
+    if (distance <= 0) {
+      setGameState('WIN');
+    } else if (aliveCars === 0) {
+      setGameState('GAMEOVER');
+    }
+  }, [distance, vehicles, gameState]);
+
+
+  // --- Render Helpers ---
+  const healthBarColor = (hp, max) => {
+    const ratio = hp / max;
+    if (ratio > 0.6) return 'bg-green-500';
+    if (ratio > 0.3) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white font-mono flex flex-col items-center p-4 select-none" style={{ fontFamily: "'Press Start 2P', monospace" }}>
+      {/* Import retro font */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        .pixel-borders {
+          box-shadow: 
+            inset -4px -4px 0px 0px rgba(0,0,0,0.5),
+            inset 4px 4px 0px 0px rgba(255,255,255,0.2);
+        }
+        .retro-btn:active {
+          box-shadow: inset 4px 4px 0px 0px rgba(0,0,0,0.5);
+          transform: translateY(2px);
+        }
+        .road-bg {
+          background-image: repeating-linear-gradient(
+            0deg,
+            #333,
+            #333 20px,
+            #ffd700 20px,
+            #ffd700 40px
+          );
+          background-size: 100% 40px;
+        }
+        .crt-overlay {
+          pointer-events: none;
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+          background-size: 100% 4px, 6px 100%;
+          z-index: 50;
+          opacity: 0.3;
+        }
+      `}</style>
+      
+      <div className="crt-overlay"></div>
+
+      {/* Header */}
+      <div className="w-full max-w-3xl mb-6 text-center pt-8">
+        <h1 className="text-2xl md:text-4xl text-yellow-400 mb-2 tracking-widest leading-loose" style={{textShadow: '4px 4px 0px #000'}}>GRINDHARD ROADTRIP</h1>
+        <p className="text-xs text-gray-400">8-Bit Garage Adventure</p>
+      </div>
+
+      {/* Screen Routing */}
+      <div className="w-full max-w-3xl bg-gray-800 border-4 border-gray-600 p-1 rounded-lg pixel-borders relative">
+        
+        {/* === START SCREEN === */}
+        {gameState === 'START' && (
+          <div className="p-8 text-center bg-gray-900 border-2 border-gray-700 min-h-[400px] flex flex-col justify-center items-center">
+            <div className="text-6xl mb-8">🛻 💨</div>
+            <p className="text-xs md:text-sm leading-relaxed mb-8 max-w-lg">
+              Your mission: Scour Facebook Marketplace in Southern California, buy two unique (and highly questionable) vehicles, and drive them 1,200 miles home to North Idaho.
+              <br/><br/>
+              Bring zip ties.
+            </p>
+            <button 
+              onClick={startGame}
+              className="retro-btn bg-green-600 hover:bg-green-500 text-white p-4 border-4 border-gray-900 pixel-borders text-sm"
+            >
+              START TRIP
+            </button>
+          </div>
+        )}
+
+        {/* === MARKETPLACE SCREEN === */}
+        {gameState === 'MARKET' && (
+          <div className="p-4 bg-gray-900 border-2 border-gray-700 min-h-[400px]">
+            <div className="flex justify-between items-center mb-6 border-b-4 border-gray-700 pb-4">
+              <h2 className="text-lg text-blue-400">MARKETPLACE</h2>
+              <div className="text-green-400 text-sm">Budget: ${money}</div>
+            </div>
+            
+            <p className="text-xs text-gray-400 mb-4">Select EXACTLY TWO vehicles to drive home.</p>
+
+            <div className="space-y-4 mb-6">
+              {marketListings.map(item => (
+                <div 
+                  key={item.id}
+                  onClick={() => toggleMarketSelection(item.id)}
+                  className={`p-3 border-4 cursor-pointer transition-colors ${item.selected ? 'border-yellow-400 bg-gray-800' : 'border-gray-700 bg-gray-900 hover:bg-gray-800'}`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-3xl">{item.icon}</span>
+                      <div>
+                        <div className="text-xs text-white mb-2">{item.name}</div>
+                        <div className="text-[10px] text-gray-400">Cond: {item.condition}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-green-400">${item.price}</div>
+                      <div className="text-[10px] mt-2 text-gray-500">{item.selected ? '[X] SELECTED' : '[ ] BUY'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-6">
+              <button 
+                onClick={buyVehicles}
+                className="retro-btn bg-blue-600 hover:bg-blue-500 text-white p-4 border-4 border-gray-900 pixel-borders text-xs w-full"
+              >
+                PURCHASE & START DRIVING
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* === TRAVEL SCREEN === */}
+        {gameState === 'TRAVEL' && (
+          <div className="relative bg-gray-900 border-2 border-gray-700 min-h-[500px] flex flex-col">
+            
+            {/* HUD */}
+            <div className="bg-gray-800 p-3 flex justify-between items-center border-b-4 border-gray-700 text-[10px] md:text-xs">
+              <div className="text-green-400">CASH: ${money}</div>
+              <div className="text-yellow-400">DIST: {distance} MILES</div>
+            </div>
+
+            {/* Road View */}
+            <div className="h-48 relative overflow-hidden bg-blue-900 border-b-4 border-gray-700 flex flex-col justify-end">
+              {/* Mountains BG */}
+              <div className="absolute top-4 left-0 w-full text-4xl whitespace-nowrap opacity-50" style={{ transform: `translateX(-${(bgOffset * 0.2) % 100}px)`}}>
+                ⛰️ 🌲 ⛰️ 🌲 🌲 ⛰️ ⛰️ 🌲 🌲 ⛰️
+              </div>
+              
+              {/* Road */}
+              <div 
+                className="h-16 w-full road-bg"
+                style={{ backgroundPosition: `0px ${bgOffset}px` }}
+              ></div>
+              
+              {/* Cars Driving */}
+              <div className="absolute bottom-4 w-full flex justify-center space-x-12 px-8">
+                {vehicles.map((v, idx) => (
+                  <div key={idx} className={`text-4xl transition-transform ${v.hp <= 0 ? 'grayscale rotate-12 opacity-50' : 'animate-bounce'}`} style={{ animationDuration: `${0.5 + idx * 0.2}s` }}>
+                    {v.icon}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Vehicle Stats & Actions */}
+            <div className="p-4 flex-1 flex flex-col md:flex-row gap-4">
+              {vehicles.map((v, i) => (
+                <div key={i} className="flex-1 bg-gray-800 p-3 border-2 border-gray-600 relative">
+                  {v.hp <= 0 && <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center text-xs text-white border-2 border-red-500 z-10 font-bold tracking-widest bg-opacity-80">BROKEN DOWN</div>}
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-xl">{v.icon}</span>
+                    <span className="text-[10px] text-white break-words w-full">{v.name}</span>
+                  </div>
+                  <div className="w-full bg-gray-900 h-4 border-2 border-gray-700 mb-1">
+                    <div className={`h-full ${healthBarColor(v.hp, v.maxHp)}`} style={{ width: `${Math.max(0, (v.hp / v.maxHp) * 100)}%` }}></div>
+                  </div>
+                  <div className="text-[8px] text-gray-400 mb-4 text-right">HP: {v.hp}/{v.maxHp}</div>
+                  
+                  <button 
+                    onClick={() => repairVehicle(i)}
+                    disabled={v.hp >= v.maxHp || money < 100}
+                    className="w-full retro-btn bg-yellow-600 disabled:bg-gray-600 disabled:text-gray-400 hover:bg-yellow-500 text-white p-2 border-2 border-gray-900 pixel-borders text-[8px]"
+                  >
+                    REPAIR ($100)
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Controls & Log */}
+            <div className="p-4 bg-black border-t-4 border-gray-700 flex flex-col md:flex-row gap-4 items-center">
+               <button 
+                onClick={drive}
+                className="retro-btn bg-green-600 hover:bg-green-500 text-white p-4 px-8 border-4 border-gray-900 pixel-borders text-sm w-full md:w-auto"
+              >
+                DRIVE ON
+              </button>
+              
+              <div className="flex-1 w-full bg-gray-900 p-2 border-2 border-gray-700 h-20 overflow-hidden text-[8px] text-gray-300 flex flex-col gap-1">
+                {log.map((l, i) => (
+                  <div key={i} className={i === 0 ? "text-white" : "opacity-60"}>
+                    {'>'} {l}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Event Modal Overlay */}
+            {currentEvent && (
+              <div className="absolute inset-0 bg-black/80 z-20 flex items-center justify-center p-4">
+                <div className="bg-blue-900 border-4 border-white p-6 max-w-sm w-full pixel-borders text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="text-3xl mb-4">{currentEvent.type === 'bad' ? '⚠️' : '🔧'}</div>
+                  <h3 className="text-xs text-yellow-400 mb-4 uppercase leading-loose">{currentEvent.vehicleName}</h3>
+                  <p className="text-[10px] text-white mb-6 leading-loose">{currentEvent.text}</p>
+                  
+                  <div className="text-[10px] mb-6 font-bold">
+                    {currentEvent.hpDamage > 0 ? (
+                      <span className="text-red-400">Takes {currentEvent.hpDamage} Damage!</span>
+                    ) : currentEvent.hpDamage < 0 ? (
+                      <span className="text-green-400">Heals {Math.abs(currentEvent.hpDamage)} HP!</span>
+                    ) : (
+                      <span className="text-gray-400">No damage taken.</span>
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={handleEventAcknowledge}
+                    className="retro-btn bg-white text-black p-3 border-4 border-gray-500 pixel-borders text-[10px] w-full"
+                  >
+                    CONTINUE
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* === GAME OVER SCREEN === */}
+        {gameState === 'GAMEOVER' && (
+          <div className="p-8 text-center bg-red-900 border-2 border-red-700 min-h-[400px] flex flex-col justify-center items-center">
+            <div className="text-6xl mb-6">🔥</div>
+            <h2 className="text-2xl text-yellow-400 mb-4">STRANDED!</h2>
+            <p className="text-[10px] leading-relaxed mb-8 max-w-md text-white">
+              Both of your sketchy vehicles have completely broken down. You're out of zip ties, out of JB Weld, and stuck on the side of the highway {distance} miles from Sandpoint.
+            </p>
+            <button 
+              onClick={startGame}
+              className="retro-btn bg-gray-800 hover:bg-gray-700 text-white p-4 border-4 border-gray-900 pixel-borders text-xs"
+            >
+              CALL A TOW TRUCK (RESTART)
+            </button>
+          </div>
+        )}
+
+        {/* === WIN SCREEN === */}
+        {gameState === 'WIN' && (
+          <div className="p-8 text-center bg-green-900 border-2 border-green-700 min-h-[400px] flex flex-col justify-center items-center">
+            <div className="text-6xl mb-6">🌲</div>
+            <h2 className="text-xl md:text-2xl text-yellow-400 mb-4 leading-loose">WELCOME TO IDAHO</h2>
+            <p className="text-[10px] leading-relaxed mb-6 max-w-md text-white">
+              You actually made it! The vehicles are smoking, leaking oil, and barely holding together, but they're home. Time to park them in the woods and start the crazy engine swaps!
+            </p>
+            
+            <div className="bg-black/50 p-4 border-2 border-green-500 mb-8 text-[8px] text-left w-full max-w-sm">
+              <div className="mb-2 text-yellow-400">TRIP REPORT:</div>
+              <div>REMAINING CASH: ${money}</div>
+              {vehicles.map((v, i) => (
+                <div key={i} className="mt-2">
+                  {v.name}: {v.hp > 0 ? `${v.hp} HP (Survived)` : 'Towed Home (Broken)'}
+                </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={startGame}
+              className="retro-btn bg-blue-600 hover:bg-blue-500 text-white p-4 border-4 border-gray-900 pixel-borders text-xs"
+            >
+              DO ANOTHER TRIP
+            </button>
+          </div>
+        )}
+
+      </div>
+      
+      <div className="mt-6 text-[8px] text-gray-600 text-center max-w-md">
+        Inspired by the epic marketplace roadtrips of Grind Hard Plumbing Co. Keep building sketchy stuff!
+      </div>
+    </div>
+  );
+}
